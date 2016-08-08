@@ -1,0 +1,12 @@
+---
+title: "Katw_backoff"
+author: "Alex Baur"
+date: "April 6, 2016"
+output: html_document
+---
+
+### Katz Back-off
+
+What if there is no match found in the 4-gram list for the last 3 words of the input though? In that case, the last 2 words are taken and compared to the 3-gram list, just as though only 2 words had been input. If no match is found, then only the last word is compared against the 2-gram list. 
+
+This is known as [backing-off](https://en.wikipedia.org/wiki/Katz%27s_back-off_model) and allows for the predictive function to work off of its own vocabulary until it has extinguished all of its potential combinations from the source material.

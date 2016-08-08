@@ -1,0 +1,358 @@
+---
+title: "Prediction"
+author: "Alex Baur"
+date: "March 22, 2016"
+output: html_document
+---
+
+Will work off the Milestone1.RMD file.
+
+Convert Vcorpus to Pcorpus for easy use and to keep out of RAM?
+Need 4-gram for the final prediction in the case of a 3-input?
+
+```{r}
+setwd("C:/Users/alexb/Desktop/Coursera/Capstone/final/en_US")
+load("C:/Users/alexb/Desktop/Coursera/Capstone/final/en_US/.RData")
+```
+
+
+## Four-gram for completion
+
+```{r}
+corpgram4 <- function(x) NGramTokenizer(x, Weka_control(min = 4, max = 4))
+
+corpout4 <- TermDocumentMatrix(corpsub, control=list(tokenize = corpgram4))
+
+fourgram <- rollup(corpout4, 2, na.rm=TRUE, FUN = sum)
+
+fourgram <- data.frame(as.matrix(fourgram))
+
+foursort <- fourgram[order(-fourgram[,"X1"]), , drop=FALSE]
+
+foursub <- foursort[1:20, , drop=FALSE]
+
+foursub$X2 <- rownames(foursub)
+
+colnames(foursub) <- c("Frequency", "Phrase")
+```
+
+## Four-gram plot
+```{r}
+fourplot <- ggplot(foursub, aes(x=Phrase, y=Frequency))+geom_bar(stat="Identity", aes(reorder(Phrase,-Frequency),Frequency), fill="mediumorchid3", colour = "black")+geom_text(aes(label=Frequency), vjust = -0.25) + theme(axis.text.x = element_text(angle = 90, size=12, vjust = 0.35))
+
+fourplot
+```
+
+
+## Assign column with row names for the grams, allows sorting
+```{r}
+onegram$X2 <- rownames(onegram)
+twogram$X2 <- rownames(twogram)
+threegram$X2 <- rownames(threegram)
+fourgram$X2 <- rownames(fourgram)
+```
+
+## Then sort the grams (should have been done in these steps in the milestone)
+```{r}
+onesort <- onegram[order(-onegram[,"X1"]), , drop=FALSE]
+
+twosort <- twogram[order(-twogram[,"X1"]), , drop=FALSE]
+
+threesort <- threegram[order(-threegram[,"X1"]), , drop=FALSE]
+
+foursort <- fourgram[order(-fourgram[,"X1"]), , drop=FALSE]
+
+## Column Naming
+colnames(onesort) <- c("Frequency", "Phrase")
+colnames(twosort) <- c("Frequency", "Phrase")
+colnames(threesort) <- c("Frequency", "Phrase")
+colnames(foursort) <- c("Frequency", "Phrase")
+```
+
+## Remove sparse entries (freq=1)
+```{r}
+onesort <- onesort[!rowSums(onesort==1),]
+twosort <- twosort[!rowSums(twosort==1),]
+threesort <- threesort[!rowSums(threesort==1),]
+foursort <- foursort[!rowSums(foursort==1),]
+```
+
+## Set Probabilities for most common words in case input does not match ngrams
+```{r}
+    onesub <-  onesort[1:25, , drop=FALSE]
+    freqtot <- sum(onesub$Frequency)
+    onesub$Probability <- (onesub$Frequency)/freqtot
+```
+
+## Word Prediction Function
+```{r}
+wordpred <- function(input =" "){
+    suppressWarnings(require(tm))
+    suppressWarnings(require(stringr))
+    input <- PlainTextDocument(input)
+    input <- tolower(input)
+    input <- removeNumbers(input)
+    input <- removePunctuation(input)
+    input <- stripWhitespace(input)
+
+    if (input == " "){stop("Invalid Input: Please enter a word or phrase")}
+    
+    
+    alphacheck <- grepl("[a-zA-Z]", input)
+    if (alphacheck == FALSE){stop("Invalid Input: Please enter a word or phrase")}
+    
+    f <- function(input){
+        inputsep <- unlist(strsplit(input, " "))
+        inputsep <- rev(inputsep)
+        lengthsep <- length(inputsep)
+        
+        if (lengthsep>=3){
+            inputsub <- inputsep[1:3]
+            input2 <- rev(inputsub)
+            input2 <- paste(input2[1], input2[2], input2[3], sep =" ")
+            input2
+        }
+        
+        if (lengthsep == 2){
+            inputsub <- inputsep[1:2]
+            input2 <- rev(inputsub)
+            input2 <- paste(input2[1], input2[2], sep =" ")
+            input2
+        }
+                
+        if (lengthsep == 1){
+            input2 <- inputsep
+            input2
+        }
+    input2<-input2    
+    }
+    
+    g <- function(input2){
+        input2sep <- as.character(unlist(strsplit(input2, " ")))
+        length2sep <- length(input2sep)
+        
+        if(length2sep == 3){
+            threesearch <- grepl(paste0("^",input2,"\\s"), foursort$Phrase)
+            threefind <- foursort[threesearch, ]
+            threefind <- threefind[1, 2]
+            threeout <- word(threefind, -1)
+            out <- threeout
+            out
+            
+            threecheck <- all(threesearch==FALSE)
+            
+            if (threecheck==TRUE){
+                input3 <- unlist(strsplit(input2, " "))
+                input3 <- input3[2:3]
+                input3 <- paste(input3[1], input3[2], sep = " ")
+                twobumpsearch <- grepl(paste0("^",input3,"\\s"), threesort$Phrase)
+                twobumpfind <- threesort[twobumpsearch, ]
+                twobumpfind <- twobumpfind[1, 2]
+                twobumpout <- word(twobumpfind, -1)
+                outbump2 <- twobumpout
+                outbump2
+                
+                twobumpcheck <- all(twobumpsearch==FALSE)
+                
+                if (twobumpcheck==TRUE){
+                    input4 <- unlist(strsplit(input2, " "))
+                    input4 <- input4[3]
+                    onebumpsearch <- grepl(paste0("^",input4,"\\s"), twosort$Phrase)
+                    onebumpfind <- twosort[onebumpsearch, ]
+                    onebumpfind <- onebumpfind[1, 2]
+                    onebumpout <- word(onebumpfind, -1)
+                    outbump1 <- onebumpout
+                    outbump1
+                } else {return(outbump2)}
+            } else {return(out)}
+        }
+            
+        if (length2sep == 2){
+            twosearch <- grepl(paste0("^",input2,"\\s"), threesort$Phrase)
+            twofind <- threesort[twosearch, ]
+            twofind <- twofind[1, 2]
+            twoout <- word(twofind, -1)
+            out <- twoout
+            out
+                
+                twocheck <- all(twosearch==FALSE)
+                
+                if (twocheck==TRUE){
+                    input4 <- unlist(strsplit(input2, " "))
+                    input4 <- input4[2]
+                    onebumpsearch <- grepl(paste0("^",input4,"\\s"), twosort$Phrase)
+                    onebumpfind <- twosort[onebumpsearch, ]
+                    onebumpfind <- onebumpfind[1, 2]
+                    onebumpout <- word(onebumpfind, -1)
+                    outbump1 <- onebumpout
+                    outbump1
+                } else {return(out)}
+        }
+        if (length2sep == 1){
+                onesearch <- grepl(paste0("^",input2,"\\s"), twosort$Phrase)
+                onefind <- twosort[onesearch, ]
+                onefind <- onefind[1, 2]
+                oneout <- word(onefind, -1)
+                out <- oneout
+                out
+        }
+    out    
+    }
+    
+    input2 <- f(input)
+    input2 <- as.character(input2)
+    out <- g(input2)
+    
+    testna <- is.na(out)
+    
+    if (testna==TRUE){
+        mostfreqout <- sample(onesub$Phrase, prob=onesub$Probability)
+        
+        repcheck <- word(input2, -1)==mostfreqout[1]
+        
+        if (repcheck==TRUE){
+            mostfreqout[2]
+        } else {return(mostfreqout[1])}
+    } else {return(out)}
+}
+```
+
+Implemented using:
+-Katz-Backoff (going to lower order ngrams if higher order not found)
+-Markov chains (word prediction dependent on only the last n words in a sentence)
+
+## In progress
+```{r}
+        if (testna==TRUE){
+        mostfreqout <- sample(onesub$Phrase, prob=onesub$Probability)
+        mostfreqout[1]
+    } else {out}
+        
+    if (testnull==TRUE){
+        mostfreqout <- sample(onesub$Phrase, prob=onesub$Probability)
+        mostfreqout[1]
+    } else {out}
+    
+    
+        out <- na.omit(out)
+    out <- lapply(out, as.character)
+    
+        numcheck <- all(is.numeric(input))
+    if (numcheck == TRUE){stop("Invalid Input: Please enter a word or phrase")}
+    
+            testna <- suppressWarnings(is.na(out))
+    testnull <- suppressWarnings(is.null(out))
+        
+    if ((testna = TRUE)){
+        mostfreqout <- sample(onesub$Phrase, prob=onesub$Probability)
+        mostfreqout[1]
+        } 
+    if (((testnull=TRUE))){
+        mostfreqout <- sample(onesub$Phrase, prob=onesub$Probability)
+        mostfreqout[1]
+    } else {out}
+    
+    
+    
+        testna <- is.na(out)
+        testnull <- is.null(out)
+        if ((testna = FALSE)|(testnull=FALSE)){
+            mostfreqout <- sample(onesub$Phrase, prob=onesub$Probability)
+            mostfreqout[1]
+        }
+        else {out}
+    }
+    h(out)
+    
+    outna <- na.omit(out)
+    out <- lapply(outna, as.character)
+    out
+```
+
+
+## Graveyard
+```{r}
+    # out <- data.frame(out)
+    # out <- na.omit(out)
+    # out <- lapply(out, as.character)
+    # out
+    # out
+    
+    if (input != [:alnum:]){return("Invalid Input: Please enter a word or phrase")}
+    if (input != [:lower:]){return("Invalid Input")}
+
+    library(stringr)
+    ysearch <- grep(paste0("^",y,"\\s"), foursort$Phrase)
+    yfind <- threesort[ysearch, ]
+    yfind <- yfind[1:3, 2]
+    yout <- word(yfind, -1)
+    yout
+
+    else
+        if (lengthsep == 0 | lengthsep == " "){
+            return("Invalid input")
+        }
+
+## Ex
+Corpus[[1]]$content[1]
+"I like dogs"
+
+a<-unlist(strsplit(Corpus[[1]]$content[1]))
+a
+"I" "like" "dogs"
+
+a[1]<-"<s>"
+a
+"<s>" "I" "like" "dogs"
+
+Corpus[[1]]$content[1]<-paste(a)
+Corpus[[1]]$content[1]
+"<s> I like dogs"
+
+## Ex
+f <- function(query) {
+require(tau)
+trigrams <- sort(textcnt(rep(tolower(names(queryHistoryTab)), queryHistoryTab), method = "string", n = length(scan(text = query, what = "character", quiet = TRUE)) + 1))
+query <- tolower(query)
+idx <- which(substr(names(trigrams), 0, nchar(query)) == query)
+res <- head(names(sort(trigrams[idx], decreasing = TRUE)), n)
+res <- substr(res, nchar(query) + 2, nchar(res))
+return(res)
+}
+
+f(c("Can of beer" = 3, "can of Soda" = 2, "A can of water" = 1, "Buy me a can of soda, please" = 2), "Can of")
+
+# [1] "soda" "beer"
+```
+
+## Quiz 1
+- The guy in front of me just bought a pound of bacon, a bouquet, and a case of         beer
+- You're the reason why I smile everyday. Can you follow me please? It would mean the       world
+- Hey sunshine, can you follow me and make me the       happiest
+- Very early observations on the Bills game: Offense still struggling but the       defense
+- Go on a romantic date at the      beach
+- Well I'm pretty sure my granny has some old bagpipes in her garage I'll dust them off and be on my    way
+- Ohhhhh #PointBreak is on tomorrow. Love that film and haven't seen it in quite some   time
+- After the ice bucket challenge Louis will push his long wet hair out of his eyes with his little      fingers
+- Be grateful for the good times and keep the faith during the      bad
+- If this isn't the cutest thing you've ever seen, then you must be         insane
+
+## Quiz 2
+-When you breathe, I want to be the air for you. I'll be there for you, I'd live and I'd    die
+-Guy at my table's wife got up to go to the bathroom and I asked about dessert and he started telling me about his     marital
+-I'd give anything to see arctic monkeys this   weekend
+-Talking to your mom has the same effect as a hug and helps reduce your     stress
+-When you were in Holland you were like 1 inch away from me but you hadn't time to take a   picture
+-I'd just like all of these questions answered, a presentation of evidence, and a jury to settle the    matter
+-I can't deal with unsymetrical things. I can't even hold an uneven number of bags of groceries in each     hand
+-Every inch of you is perfect from the bottom to the    top
+-I am thankful my childhood was filled with imagination and bruises from playing     outside
+-I like how the same people are in almost all of Adam Sandler's     movies
+
+For application:
+```{r}
+All I do is put my data file in the same directory as ui.R and server.R, put the following in server.R:
+
+load(file="filename.rdata")
+```
+

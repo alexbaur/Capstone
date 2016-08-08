@@ -1,0 +1,57 @@
+---
+title: "gramdata"
+author: "Alex Baur"
+date: "April 6, 2016"
+output: html_document
+---
+### Common 4-grams
+- thanks for the follow
+- the end of the
+- the rest of the
+- at the same time
+- at the end of
+- is going to be
+- for the first time
+- cant wait to see
+- is one of the
+- thank you for the
+
+***
+### Common 3-grams
+- thanks for the
+- one of the
+- a lot of
+- to be a
+- going to be
+- i want to
+- i dont
+- looking forward to
+- i have a
+- i have to
+
+***
+### Common 2-grams
+- of the
+- in the
+- for the
+- to the
+- on the
+- to be
+- at the
+- i have
+- and the
+- is a
+
+***
+### Common 1-grams
+- the
+- and
+- you
+- for
+- that
+- with
+- this
+- was
+- have
+- are
+***

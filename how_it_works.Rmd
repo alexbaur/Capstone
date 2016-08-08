@@ -1,0 +1,12 @@
+---
+title: "How it Works"
+author: "Alex Baur"
+date: "April 6, 2016"
+output: html_document
+---
+
+### How the app predicts words
+
+The last words of the text input are stored using Markov Chains and evaluated against n-gram tables created from a set of twitter, news, and blog text data. 
+
+If a match is not found, the input is backed-off to a lower order n-gram and evaluated again for a match. If no matches are found from any of the n-gram tables then the unknown entry is selected from a list of the most commonly used single words.

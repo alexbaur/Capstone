@@ -1,0 +1,10 @@
+---
+title: "Unknown Input"
+author: "Alex Baur"
+date: "April 6, 2016"
+output: html_document
+---
+
+### Unknown Input
+
+What is done if the last words of the user input text has never been seen in the n-gram list? The top single words used in the source documents are given weighted probabilities based on how many times they appeared. When an unknown input is submitted, one of the top words is returned with its likelihood based on the probabilities assigned to the individual words. This allows for a word to be output in all cases, regardless of how cryptic the input may be.

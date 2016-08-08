@@ -1,0 +1,10 @@
+---
+title: "How_to_use"
+author: "Alex Baur"
+date: "April 6, 2016"
+output: html_document
+---
+
+### How to use the word prediction app
+
+Input your chosen word, phrase, sentence, or any collection of words into the text box in the left column and click the "Predict" button. In the column on the right, the next predicted word will be output. Punctuation, numbers, and irregular characters can be included in the input but they will be removed from the prediction process. All text input is cleaned to allow for more accurate predictions to be made.

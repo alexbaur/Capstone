@@ -1,0 +1,12 @@
+---
+title: "Markov Chains"
+author: "Alex Baur"
+date: "April 6, 2016"
+output: html_document
+---
+
+### Markov Chains
+
+[Markov Chains](https://en.wikipedia.org/wiki/Markov_chain) assume that the next word in a sentence is dependent on the words that come immediately before it, as when someone says "have a nice" the logical next word is "day". 
+
+Using the n-gram lists, the last 3 words of text input (or 2 or 1 if the input is shorter than 3 words) is compared against the known 4-gram combinations. If a match is found in the first 3 words of the 4-gram, the fourth word of the most popular 4-gram is returned as the prediction. The same happens for 2-word inputs against 3-grams, and 1-word inputs against 2-grams.

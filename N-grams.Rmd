@@ -1,0 +1,10 @@
+---
+title: "N-grams"
+author: "Alex Baur"
+date: "April 6, 2016"
+output: html_document
+---
+
+### N-grams
+
+[N-grams](https://en.wikipedia.org/wiki/N-gram) are sets of words that are commonly found together in a set of documents. This app utilizes 4-, 3-, 2-, and 1-grams (single words) to predict the next word in a sequence. These n-gram lists were generated from a training set of blog, news, and twitter documents.
