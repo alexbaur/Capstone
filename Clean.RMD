@@ -1,0 +1,62 @@
+---
+title: "Capstone Cleaning"
+author: "Alex Baur"
+date: "March 9, 2016"
+output: html_document
+---
+
+```{r}
+## Initial
+library(tm)
+library(qdap)
+
+setwd("C:/Users/alexb/Desktop/Coursera/Capstone")
+swift <- c("Coursera-SwiftKey.zip")
+unzip(swift)
+setwd("C:/Users/alexb/Desktop/Coursera/Capstone/final/en_US")
+```
+
+```{r, echo=FALSE}
+## Playing around with tm and Corpus objects
+txt1 <- system.file("texts", "en_US", package = "tm")
+## See Reading category below, relates to the steps seen here. Determine best order
+## inconv(text_vector, "UTF-8", "ascii", sub = " ")
+engcorp <- Corpus(DirSource("C:/Users/alexb/Desktop/Coursera/Capstone/final/en_US", encoding = "UTF-8", ignore.case = TRUE))
+                  
+inspect(engcorp[1:3])
+meta(engcorp[[2]])
+str(engcorp)
+```
+
+
+```{r}
+## Reading in for cleaning
+blogs <- readLines('en_US.blogs.txt', encoding = "UTF-8")
+news <- readLines('en_US.news.txt', encoding = "UTF-8", warn = FALSE)
+twitter <- readLines('en_US.twitter.txt', encoding = "UTF-8", skipNul = TRUE)
+```
+
+```{r}
+## subsetting
+Samplesize <- 0.60
+blogsSub <- sample(blogs, length(blogs)*Samplesize)
+newsSub <- sample(news, length(news)*Samplesize)
+twitterSub <- sample(twitter, length(twitter)*Samplesize)
+allSub <- c(blogsSub, newsSub, twitterSub)
+```
+
+```{r}
+## Reading subsets into tm as Corpus
+## allSubsent  <- sent_detect(allSub, language = "en", model = NULL)
+corpsub<- VCorpus(VectorSource(allSub))
+corpsub <- tm_map(corpsub, content_transformer(function(x) iconv(x, to="ASCII", sub=" ")))
+corpsub <- tm_map(corpsub, content_transformer(tolower))
+corpsub <- tm_map(corpsub, content_transformer(removePunctuation))
+corpsub <- tm_map(corpsub, content_transformer(removeNumbers))
+corpsub <- tm_map(corpsub, content_transformer(stripWhitespace))
+
+## Create the Document Term Matrix that arguments can be applied to
+dtm = DocumentTermMatrix(corpsub, control=list())
+inspect(dtm)
+findFreqTerms(dtm, 1000, Inf)
+```
