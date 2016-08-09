@@ -1,0 +1,230 @@
+---
+title: "Milestone 1"
+author: "Alex Baur"
+date: "March 17, 2016"
+output: html_document
+---
+
+## Summary
+This report explores the basic details of the data supplied for the Coursera Data Science Capstone Project and serves as a basic outline of how text can be classified and sorted to allow for an eventual prediction application to be created. The information is explored, cleaned, and an n-gram model is developed for use as the backbone of the predictive algorithm created later on.
+
+## Data
+
+The data examined in this report comes from the [SwiftKey](https://swiftkey.com/en) Dataset and contains 4 folders (english, german, finnish, and russian) each with a blogs, news, and twitter text file. We will be using the english set during development of our predictive models and shiny application. 
+
+#### Loading
+
+To begin, the necessary packages are loaded in. Following that, the data is downloaded, unzipped, and the three relevant files from the en_US folder are read in.
+
+```{r, echo=TRUE, eval=TRUE, message = FALSE}
+options(mc.cores=1)
+library(tm)
+library(qdap)
+library(R.utils)
+library(RWeka)
+library(ggplot2)
+library(slam)
+library(data.table)
+library(dplyr)
+library(stringi)
+```
+```{r, echo = TRUE, eval = FALSE}
+setwd("C:/Users/alexb/Desktop/Coursera/Capstone")
+swift <- c("Coursera-SwiftKey.zip")
+unzip(swift)
+setwd("C:/Users/alexb/Desktop/Coursera/Capstone/final/en_US")
+```
+```{r, echo=TRUE}
+blogs <- readLines('en_US.blogs.txt', encoding = "UTF-8")
+news <- readLines('en_US.news.txt', encoding = "UTF-8", warn = FALSE)
+twitter <- readLines('en_US.twitter.txt', encoding = "UTF-8", skipNul = TRUE)
+```
+
+#### Overview
+
+The blogs file contains:
+- 248 Mb
+- 899288 lines
+- 37546246 words
+```{r, echo=FALSE}
+head(blogs, 2)
+```
+
+
+```{r, echo=FALSE, eval=FALSE, error=FALSE, warning=FALSE}
+iconv(blogs, "UTF-8", to="ASCII", sub=" ")
+object.size(blogs)/1048576
+print("Megabytes")
+countLines("en_US.blogs.txt")
+print("Lines")
+sum(stri_count_words(blogs))
+print("Words")
+print("Content:")
+head(blogs, 2)
+```
+
+The news file contains:
+-19 Mb
+-1010242 lines
+-2578998 words
+```{r, echo=FALSE}
+head(news, 2)
+```
+
+
+```{r, echo = FALSE, eval = FALSE}
+iconv(news, "UTF-8", to="ASCII", sub=" ")
+object.size(news)/1048576
+print("Megabytes")
+countLines("en_US.news.txt")
+print("Lines")
+word_count(news, byrow = FALSE)
+print("Words")
+print("Content:")
+head(news, 2)
+```
+
+The twitter file contains:
+-301 Mb
+-2360148 Lines
+-30093410 words
+```{r, echo=FALSE}
+head(twitter, 2)
+```
+
+
+```{r, echo = FALSE, eval=FALSE}
+iconv(twitter, "UTF-8", to="ASCII", sub=" ")
+object.size(twitter)/1048576
+print("Megabytes")
+countLines("en_US.twitter.txt")
+print("Lines")
+sum(stri_count_words(twitter))
+print("Words")
+print("Content:")
+head(twitter, 2)
+```
+
+#### Sampling
+
+Due to the size of the dataset, a representative sample will be taken from each of the datasets to make the processing time reasonable and the results accurate.
+```{r, echo = TRUE}
+set.seed(2016)
+Samplesize <- 0.05
+blogsSub <- sample(blogs, length(blogs)*Samplesize)
+newsSub <- sample(news, length(news)*Samplesize)
+twitterSub <- sample(twitter, length(twitter)*Samplesize)
+allSub <- paste(c(blogsSub, newsSub, twitterSub))
+```
+
+#### Cleaning
+
+For our text prediction, we do not want numbers, punctuation, or non-UTF-8 characters confusing our algorithm. We convert the sampled data into a corpus object and clean it.
+```{r, echo = TRUE}
+corpsub<- Corpus(VectorSource(allSub))
+corpsub <- tm_map(corpsub, content_transformer(function(x) iconv(x, to="ASCII", sub=" ")))
+corpsub <- tm_map(corpsub, PlainTextDocument)
+corpsub <- tm_map(corpsub, content_transformer(tolower))
+corpsub <- tm_map(corpsub, content_transformer(removePunctuation))
+corpsub <- tm_map(corpsub, content_transformer(removeNumbers))
+corpsub <- tm_map(corpsub, content_transformer(stripWhitespace))
+```
+
+We also must remove profanity from the data. A list of profane words was downloaded from the [Shutterstock Github Page](https://github.com/shutterstock/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/blob/master/en) into the working directory. This was then used as a reference for the tm package to sort and discard any matching profanities.
+
+```{r, echo=TRUE}
+prof <- readLines("en.txt", encoding = "UTF-8")
+corpsub <- tm_map(corpsub, removeWords, prof)
+```
+
+## Frequency Analysis
+
+The combined texts will then be analyzed for their 1-, 2-, and 3-gram relationships to see what common combinations of words are present. This will be used later on to determine which best next words to use in the predictive algorithm.
+
+#### Tokenizing
+```{r, echo=TRUE}
+corpdata <- data.frame(text=unlist(sapply(corpsub, '[', "content")), stringsAsFactors=FALSE)
+
+corpgram <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
+
+corpout <- TermDocumentMatrix(corpsub, control=list(tokenize = corpgram))
+
+corpgram2 <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+
+corpout2 <- TermDocumentMatrix(corpsub, control=list(tokenize = corpgram2))
+
+corpgram3 <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
+
+corpout3 <- TermDocumentMatrix(corpsub, control=list(tokenize = corpgram3))
+```
+
+#### 1-gram
+```{r, echo = FALSE}
+onegram <- rollup(corpout, 2, na.rm=TRUE, FUN = sum)
+
+onegram <- data.frame(as.matrix(onegram))
+
+onesort <- onegram[order(-onegram[,"X1"]), , drop=FALSE]
+
+onesub <- onesort[1:20, , drop=FALSE]
+
+onesub$X2 <- rownames(onesub)
+
+colnames(onesub) <- c("Frequency", "Word")
+
+oneplot <- ggplot(onesub, aes(x=Word, y=Frequency))+geom_bar(stat="Identity", aes(reorder(Word,-Frequency),Frequency), fill="seagreen3", colour = "black")+geom_text(aes(label=Frequency), vjust = -0.25) + theme(axis.text.x = element_text(angle = 90))
+
+oneplot
+```
+
+The top 20 single words present in the data.
+
+#### 2-gram
+
+```{r, echo=FALSE}
+twogram <- rollup(corpout2, 2, na.rm=TRUE, FUN = sum)
+
+twogram <- data.frame(as.matrix(twogram))
+
+twosort <- twogram[order(-twogram[,"X1"]), , drop=FALSE]
+
+twosub <- twosort[1:20, , drop=FALSE]
+
+twosub$X2 <- rownames(twosub)
+
+colnames(twosub) <- c("Frequency", "Phrase")
+
+twoplot <- ggplot(twosub, aes(x=Phrase, y=Frequency))+geom_bar(stat="Identity", aes(reorder(Phrase,-Frequency),Frequency), fill="coral", colour = "black")+geom_text(aes(label=Frequency), vjust = -0.25) + theme(axis.text.x = element_text(angle = 90))
+
+twoplot
+```
+
+The top 20 2-word combinations present in the data set.
+
+#### 3-gram
+```{r, echo = FALSE}
+threegram <- rollup(corpout3, 2, na.rm=TRUE, FUN = sum)
+
+threegram <- data.frame(as.matrix(threegram))
+
+threesort <- threegram[order(-threegram[,"X1"]), , drop=FALSE]
+
+threesub <- threesort[1:20, , drop=FALSE]
+
+threesub$X2 <- rownames(threesub)
+
+colnames(threesub) <- c("Frequency", "Phrase")
+
+threeplot <- ggplot(threesub, aes(x=Phrase, y=Frequency))+geom_bar(stat="Identity", aes(reorder(Phrase,-Frequency),Frequency), fill="skyblue2", colour = "black")+geom_text(aes(label=Frequency), vjust = -0.25) + theme(axis.text.x = element_text(angle = 90))
+
+threeplot
+```
+
+The top 20 3-word combinations found in the data.
+
+## Conclusion
+The most commonly used words tend to be articles, conjunctions, prepositions, and pronouns. Overwhelmingly, the definite article 'the' is present in the 2- and 3-gram histograms and is the single most used word in the data set. The indefinite article 'a' is also heavily represented in the 2- and 3-gram plots as well.
+
+Now that the n-gram model has been established, the application can be developed to see what most common words come next after the user has input a word. The initial word can be tested against all 2-gram entries that have the same first word as what the user selected and the last word will be returned as an option for the user to select. The same can be done wth 2 input words against the 3-gram possibilities.
+
+When the app is being coded, sparse terms will be removed to create to increase the speed and efficiency of the text searching, and frequency tables will be established beforehand so that the app only needs to cross reference the frequency matrices rather than generate them on the spot. Also, stop-words will be given a lower weighting so that they do not become overly suggested and allow for a more fluid user experience.
